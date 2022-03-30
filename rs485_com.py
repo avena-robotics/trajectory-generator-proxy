@@ -29,9 +29,9 @@ class RSComm:
                                   stopbits=1, bytesize=8, timeout=1, write_timeout=1, rtscts=1)
         self.read_bytes_buffer = b''
         self.jtc_status = []
+        self.current_config = [0] * 6 # current robotic arm values in RAD
 
     def read_st_frame(self):
-
         # while True:
         self.read_bytes_buffer += self.port.read_all()
 
@@ -73,31 +73,94 @@ class RSComm:
             print(response)
 
     def translate_to_modbus(self,frame):
-        mb_frame=[]
+        mb_frame=[-1] # There is nothing at index 0 (according to Excel documentation describing registers)
+        
+        # JTC current FSM
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[9:10]))
-        mb_frame+=list(struct.unpack('>HH',frame[10:14]))
+        
+        # JTC current errors
+        mb_frame+=list(struct.unpack('>H',frame[10:12]))
+        
+        # JTC occured errors
+        mb_frame+=list(struct.unpack('>H',frame[12:14]))
+
+        # JTC init status
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[14:15]))
+
+        # JTC joint init status
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[15:16]))
+        
+        # Traj execution status
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[16:17]))
+
+        # Traj num current point
         mb_frame+=list(struct.unpack('>HH',frame[17:21]))
+
+        # Friction type
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[21:22]))
+
+        # CAN current status
         mb_frame+=list(struct.unpack('>H',b'\x00'+frame[22:23]))
+
+        # CAN current errors
         mb_frame+=list(struct.unpack('>HH',frame[23:27]))
+
+        # CAN occured errors
         mb_frame+=list(struct.unpack('>HH',frame[27:31]))
 
+        # Joints 0 - 5
         for i in range(6):
             offset = 31 + i * 22
+            # Joint current FSM
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset:offset+1]))
+            
+            # Joint MC current errors
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+1:offset+2]))
+            
+            # Joint MC occured errors
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+2:offset+3]))
+            
+            # Joint current errors
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+3:offset+4]))
+            
+            # Joint current warnings
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+4:offset+5]))
-            mb_frame+=list(struct.unpack('>HH',frame[offset+5:offset+9]))
-            mb_frame+=list(struct.unpack('>ff',frame[offset+9:offset+17]))
-            mb_frame+=list(struct.unpack('>f',frame[offset+17:offset+21]))
+            
+            # Joint internal errors
+            mb_frame+=list(struct.unpack('>H',frame[offset+5:offset+7]))
+            
+            # Joint internal occured errors
+            mb_frame+=list(struct.unpack('>H',frame[offset+7:offset+9]))
+
+            # Joint current position
+            mb_frame+=list(struct.unpack('>HH',frame[offset+9:offset+13]))
+
+            # Save current position for i-th joint
+            self.current_config[i] = struct.unpack('>f', frame[offset+9:offset+13])[0]
+
+            # Joint current velocity
+            mb_frame+=list(struct.unpack('>HH',frame[offset+13:offset+17]))
+            
+            # Joint current torque
+            mb_frame+=list(struct.unpack('>HH',frame[offset+17:offset+21]))
+            
+            # Joint temperature
             mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+21:offset+22]))
 
-        mb_frame+=list(struct.unpack('>H',frame[163:165]))
+        # Joint 6 (reserved for future use)
+        mb_frame+=[0] * 14
+
+        # Digital input
+        mb_frame+=[0]
+
+        # Digital output
+        mb_frame+=[0]
+
+        # Analog inputs 0 - 3
+        mb_frame+=[0] * 4
+
+        # Analog outputs 0 - 3
+        mb_frame+=[0] * 4
 
         return mb_frame
 
@@ -151,7 +214,7 @@ class RSComm:
         self.port.write(traj.numOfSegToSend.strToSend)
 
     async def update_stm_status(self,status_container):
-        while (True):
+        while True:
             ret = self.read_st_frame()
             if ret is not None:
                 status_container[0]=ret
