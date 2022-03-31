@@ -65,8 +65,7 @@ class Trajectory:
         finish_idx = start_idx + seg.lenPointsInSeg
         seg.value = self.value[:, start_idx:finish_idx, :]
 
-    def prepare_segments_to_send(self, seg):
-
+    def prepare_segments_to_send(self, seg: TrajectorySegment):
         seg.strToSend = b''
         seg.strToSend += int.to_bytes(params.Host_FT.Header.value, 1, 'big', signed=False)
         seg.strToSend += int.to_bytes(params.Host_FT.Trajectory.value, 1, 'big', signed=False)
@@ -78,14 +77,14 @@ class Trajectory:
         seg.strToSend += int.to_bytes(seg.stepTime, 2, 'big', signed=False)
 
         for i in range(seg.lenPointsInSeg):
-            val = (seg.value[0][i] / params.JOINT_POSMAX * 32767).astype(int)
+            val = (seg.value[0][i] / params.JOINT_POSMAX * params.MAX_INT16).astype(int)
             seg.strToSend += struct.pack('>hhhhhh', *val)
-            val = (seg.value[1][i] / params.JOINT_VELMAX * 32767).astype(int)
+            val = (seg.value[1][i] / params.JOINT_VELMAX * params.MAX_INT16).astype(int)
             seg.strToSend += struct.pack('>hhhhhh', *val)
-            val = (seg.value[2][i] / params.JOINT_ACCMAX * 32767).astype(int)
+            val = (seg.value[2][i] / params.JOINT_ACCMAX * params.MAX_INT16).astype(int)
             seg.strToSend += struct.pack('>hhhhhh', *val)
 
-        nd = len(seg.strToSend) + 4
+        nd = len(seg.strToSend) + 2
         seg.strToSend = seg.strToSend.replace(seg.strToSend[2:4], int.to_bytes(nd, 2, 'big', signed=False), 1)
         crc = rs485_com.get_crc(seg.strToSend, len(seg.strToSend))
         seg.strToSend += int.to_bytes(crc, 2, 'big', signed=False)

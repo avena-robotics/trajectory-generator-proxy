@@ -94,6 +94,7 @@ class JTC_FT(enum.Enum):
     Polynomial = 0
     Table = 1
 
+
 class TES(enum.Enum):
     TES_Null = 0
     TES_Stop = enum.auto()
@@ -116,3 +117,6 @@ JOINT_TORQUEMAX = 256.0
 MAX_INT16 = 32767.0
 TRAJ_MAXPOINTINSEG = 500
 ARMMODEL_DOF = 6
+
+MAX_VEL = 0.5 # rad/s
+TIME_STEP = 0.01 # sec

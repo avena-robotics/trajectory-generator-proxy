@@ -21,13 +21,12 @@ class ModbusServer:
             bytesize=serialutil.EIGHTBITS,
             parity=serialutil.PARITY_NONE,
             stopbits=serialutil.STOPBITS_ONE,
+            timeout = 0.1
         )
-        self.s.timeout = 0.1
         self.data_store = defaultdict(int)
         self.jtc_status=[0]
         self.app = get_server(RTUServer, self.s)
         self.flags=[False]
-
 
         @self.app.route(slave_ids=[1], function_codes=[1, 2, 3], addresses=list(range(0, 1000)))
         def read_data_store(slave_id, function_code, address):
@@ -43,13 +42,16 @@ class ModbusServer:
                 self.flags[0] = True
 
     async def handle_request(self):
-        while 1:
+        while True:
             await asyncio.sleep(0.05)
             try:
                 self.app.serve_once()
             except (CRCError, struct.error) as e:
                 print('Can\'t handle request: {0}'.format(e))
-            except (SerialTimeoutException, ValueError):
+            except SerialTimeoutException as e:
+                print('[ERROR]: SerialTimeoutException', e)
+            except ValueError as e:
+                # print('[ERROR]: ValueError', e)
                 pass
 
 if __name__ == '__main__':

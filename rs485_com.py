@@ -22,19 +22,29 @@ def get_crc(frame, nbytes):
     return ctypes.c_uint16(crc).value
 
 
+class RSResponseInfo:
+    frame_type = params.Host_FT(0)
+    frame_status = params.Host_RxFS(0)
+    data_status = params.Host_RxDS(0)
+
+    def __repr__(self):
+        return f'RSResponseInfo: {self.frame_type}, {self.frame_status}, {self.data_status}'
+
+
 class RSComm:
 
     def __init__(self):
         self.port = serial.Serial(port='/dev/ttyACM0', baudrate=115200, parity=serial.PARITY_NONE,
-                                  stopbits=1, bytesize=8, timeout=1, write_timeout=1, rtscts=1)
+                                  stopbits=1, bytesize=8, timeout=1, rtscts=1)
         self.read_bytes_buffer = b''
         self.jtc_status = []
-        self.current_config = [0] * 6 # current robotic arm values in RAD
+        self.response_info = RSResponseInfo()
+        self.current_config = [0] * 6 # current robotic arm values in radians
 
     def read_st_frame(self):
-        # while True:
         self.read_bytes_buffer += self.port.read_all()
 
+        # Validate accumulated byte stream
         if len(self.read_bytes_buffer) < 4:
             return
         if len(self.read_bytes_buffer) > params.COMBUFREADMAX:
@@ -51,28 +61,32 @@ class RSComm:
         if nd > params.COMBUFREADMAX:
             self.read_bytes_buffer = b''
             return
-        read_buffer = []
-        for i in range(nd):
-            read_buffer.append(self.read_bytes_buffer[header_idx + i])
 
-        self.jtc_status = self.read_jtc_status(self.read_bytes_buffer[header_idx:header_idx + nd])
-        ret=self.translate_to_modbus(self.read_bytes_buffer[header_idx:header_idx + nd])
-        self.translate_frame(read_buffer[header_idx:header_idx + nd])
+        # Save valid buffer
+        read_buffer = self.read_bytes_buffer[header_idx:header_idx + nd]
+
+        # self.jtc_status = self.read_jtc_status(read_buffer)
+        ret=self.translate_to_modbus(read_buffer)
+        self.response_info = self.translate_frame(read_buffer)
+        # print('received info:', self.response_info)
+
+        # Store remaining buffer for further processing
         self.read_bytes_buffer = self.read_bytes_buffer[header_idx + nd:]
-
         return ret
-        # if len(read_bytes_buffer) <= 4:
-        #     return
 
-    def translate_frame(self, frame):
-        response = []
-        response.append(params.Host_FT(frame[4]).name)
-        response.append(params.Host_RxFS(frame[5]).name)
-        response.append(params.Host_RxDS(frame[6]).name)
+    def translate_frame(self, frame) -> RSResponseInfo:
+        response = RSResponseInfo()
+        response.frame_type = params.Host_FT(frame[4])
+        response.frame_status = params.Host_RxFS(frame[5])
+        response.data_status = params.Host_RxDS(frame[6])
+        ################
+        # DEBUG
         if frame[4]:
-            print(response)
+            print('response:', response)
+        ################
+        return response
 
-    def translate_to_modbus(self,frame):
+    def translate_to_modbus(self, frame):
         mb_frame=[-1] # There is nothing at index 0 (according to Excel documentation describing registers)
         
         # JTC current FSM
@@ -135,9 +149,11 @@ class RSComm:
             # Joint current position
             mb_frame+=list(struct.unpack('>HH',frame[offset+9:offset+13]))
 
+            #####################################################
             # Save current position for i-th joint
             self.current_config[i] = struct.unpack('>f', frame[offset+9:offset+13])[0]
-
+            #####################################################
+            
             # Joint current velocity
             mb_frame+=list(struct.unpack('>HH',frame[offset+13:offset+17]))
             
@@ -202,7 +218,7 @@ class RSComm:
 
     # killme
 
-    def send_command(self, command):
+    def send_command(self, command: enum.Enum):
         msg = struct.pack('>BB', params.Host_FT.Header.value, command.value)
         nd = len(msg) + 4
         msg += struct.pack('>H', nd)
@@ -210,9 +226,20 @@ class RSComm:
         msg += struct.pack('>H', crc)
         self.port.write(msg)
 
-    def send_trajectory(self, traj):
-        self.port.write(traj.numOfSegToSend.strToSend)
-
+    async def send_trajectory(self, traj):
+        seg_num = 0
+        while seg_num < len(traj.seg):
+            self.port.write(traj.seg[seg_num].strToSend)
+            self.port.flush()
+            while True:
+                if self.response_info.frame_type == params.Host_FT.Trajectory:
+                    if self.response_info.frame_status == params.Host_RxFS.NoError and \
+                       self.response_info.data_status == params.Host_RxDS.NoError:
+                        # Trajectory successfully sent
+                        seg_num += 1
+                    break
+                await asyncio.sleep(0.05)
+                
     async def update_stm_status(self,status_container):
         while True:
             ret = self.read_st_frame()
@@ -223,9 +250,8 @@ class RSComm:
     async def msg_dispatch(self, q):
         pass
 
-    async def main(self):
-        pass
-
 
 if __name__ == '__main__':
-    pass
+    rs_com = RSComm()
+    serial_data_container = [0]
+    asyncio.run(rs_com.update_stm_status(serial_data_container))
