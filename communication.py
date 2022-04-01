@@ -19,8 +19,8 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array):
     time = max_diff / params.MAX_VEL
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
     rtb_traj = jtraj(start_config, goal_config, time_vec)
-    # traj = np.array([rtb_traj.q,rtb_traj.qd,rtb_traj.qdd])
-    traj = np.array([[rtb_traj.q[0,:]], [rtb_traj.qd[0,:]], [rtb_traj.qdd[0,:]]])
+    traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
+    # traj = np.array([[rtb_traj.q[0,:]], [rtb_traj.qd[0,:]], [rtb_traj.qdd[0,:]]])
     return traj
 
 async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_com: rs485_com.RSComm):
@@ -37,6 +37,7 @@ async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_co
             traj.value = calculate_trajectory(np.array(rs_com.current_config), np.array(goal_config))
             traj.prepare_trajectory_to_send()
             await rs_com.send_trajectory(traj)
+            rs_com.execute_trajectory()
             print('Trajectory successfully send')
         await asyncio.sleep(0.1)
         

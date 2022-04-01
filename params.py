@@ -96,11 +96,11 @@ class JTC_FT(enum.Enum):
 
 
 class TES(enum.Enum):
-    TES_Null = 0
-    TES_Stop = enum.auto()
-    TES_Pause = enum.auto()
-    TES_Execute = enum.auto()
-    TES_Finish = enum.auto()
+    Null = 0
+    Stop = enum.auto()
+    Pause = enum.auto()
+    Execute = enum.auto()
+    Finish = enum.auto()
 
 
 COMFRAMETOSYNCHROSENDMAX = 1
@@ -118,5 +118,5 @@ MAX_INT16 = 32767.0
 TRAJ_MAXPOINTINSEG = 500
 ARMMODEL_DOF = 6
 
-MAX_VEL = 0.5 # rad/s
+MAX_VEL = 0.1 # rad/s
 TIME_STEP = 0.01 # sec

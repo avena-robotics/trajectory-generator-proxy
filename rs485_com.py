@@ -1,12 +1,9 @@
 import ctypes
 import enum
-import math
 import struct
-
 import serial
-import os
-import time
 import asyncio
+
 import params, jtc_vars, trajectory
 
 
@@ -235,10 +232,23 @@ class RSComm:
                 if self.response_info.frame_type == params.Host_FT.Trajectory:
                     if self.response_info.frame_status == params.Host_RxFS.NoError and \
                        self.response_info.data_status == params.Host_RxDS.NoError:
-                        # Trajectory successfully sent
+                        # Trajectory successfully sent, send next segment
                         seg_num += 1
+                    else:
+                        print('[ERROR]: JTC returned error while receiving trajectory. Response info:', self.response_info)
                     break
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.01)
+    
+    def execute_trajectory(self):
+        # FIXME: Do it better, more generic
+        msg = struct.pack('>BB', params.Host_FT.Header.value, params.Host_FT.TrajSetExecStatus.value)
+        msg += struct.pack('>H', 0) # placeholder for nd
+        msg += struct.pack('>B', params.TES.Execute.value)
+        nd = len(msg) + 2
+        msg = msg.replace(msg[2:4], struct.pack('>H', nd), 1)
+        crc = get_crc(msg, len(msg))
+        msg += struct.pack('>H', crc)
+        self.port.write(msg)
                 
     async def update_stm_status(self,status_container):
         while True:
