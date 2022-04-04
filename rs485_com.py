@@ -3,6 +3,7 @@ import enum
 import struct
 import serial
 import asyncio
+import time
 
 import params, jtc_vars, trajectory
 
@@ -31,8 +32,8 @@ class RSResponseInfo:
 class RSComm:
 
     def __init__(self):
-        self.port = serial.Serial(port='/dev/ttyACM0', baudrate=115200, parity=serial.PARITY_NONE,
-                                  stopbits=1, bytesize=8, timeout=1, rtscts=1)
+        self.port = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE,
+                                  stopbits=1, bytesize=8, timeout=1)
         self.read_bytes_buffer = b''
         self.jtc_status = []
         self.response_info = RSResponseInfo()
@@ -234,7 +235,8 @@ class RSComm:
                        self.response_info.data_status == params.Host_RxDS.NoError:
                         # Trajectory successfully sent, send next segment
                         seg_num += 1
-                    else:
+                    else: 
+
                         print('[ERROR]: JTC returned error while receiving trajectory. Response info:', self.response_info)
                         seg_num = 0
                     break
@@ -251,11 +253,12 @@ class RSComm:
         msg += struct.pack('>H', crc)
         self.port.write(msg)
                 
-    async def update_stm_status(self,status_container):
+    async def update_stm_status(self, mb_server):
         while True:
             ret = self.read_st_frame()
             if ret is not None:
-                status_container[0]=ret
+                # with mb_server.jtc_status_mtx:
+                mb_server.jtc_status[0]=ret
             await asyncio.sleep(0.015)
 
     async def msg_dispatch(self, q):
