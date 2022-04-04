@@ -236,6 +236,7 @@ class RSComm:
                         seg_num += 1
                     else:
                         print('[ERROR]: JTC returned error while receiving trajectory. Response info:', self.response_info)
+                        seg_num = 0
                     break
                 await asyncio.sleep(0.01)
     

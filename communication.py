@@ -7,7 +7,8 @@ import struct
 import params
 from typing import DefaultDict, List
 from roboticstoolbox.tools import jtraj
-    
+
+np.set_printoptions(suppress=True)   
 
 def convert_to_float(high_16bit: int, low_16bit: int) -> float:
     val = struct.pack('>H', high_16bit) + struct.pack('>H', low_16bit)
@@ -20,6 +21,7 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array):
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
     rtb_traj = jtraj(start_config, goal_config, time_vec)
     traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
+    print(traj)
     # traj = np.array([[rtb_traj.q[0,:]], [rtb_traj.qd[0,:]], [rtb_traj.qdd[0,:]]])
     return traj
 

@@ -77,15 +77,15 @@ class Trajectory:
         seg.strToSend += int.to_bytes(seg.stepTime, 2, 'big', signed=False)
 
         for i in range(seg.lenPointsInSeg):
-            # val = (seg.value[0][i] / params.JOINT_POSMAX * params.MAX_INT16).astype(int)
-            # seg.strToSend += struct.pack('>hhhhhh', *val)
-            # val = (seg.value[1][i] / params.JOINT_VELMAX * params.MAX_INT16).astype(int)
-            # seg.strToSend += struct.pack('>hhhhhh', *val)
-            # val = (seg.value[2][i] / params.JOINT_ACCMAX * params.MAX_INT16).astype(int)
-            # seg.strToSend += struct.pack('>hhhhhh', *val)
-            seg.strToSend += struct.pack('>ffffff', seg.value[0][i])
-            seg.strToSend += struct.pack('>ffffff', seg.value[1][i])
-            seg.strToSend += struct.pack('>ffffff', seg.value[2][i])
+            val = (seg.value[0][i] / params.JOINT_POSMAX * params.MAX_INT16).astype(int)
+            seg.strToSend += struct.pack('>hhhhhh', *val)
+            val = (seg.value[1][i] / params.JOINT_VELMAX * params.MAX_INT16).astype(int)
+            seg.strToSend += struct.pack('>hhhhhh', *val)
+            val = (seg.value[2][i] / params.JOINT_ACCMAX * params.MAX_INT16).astype(int)
+            seg.strToSend += struct.pack('>hhhhhh', *val)
+            # seg.strToSend += struct.pack('>ffffff', seg.value[0][i])
+            # seg.strToSend += struct.pack('>ffffff', seg.value[1][i])
+            # seg.strToSend += struct.pack('>ffffff', seg.value[2][i])
 
 
         nd = len(seg.strToSend) + 2
