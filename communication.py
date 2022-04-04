@@ -50,7 +50,10 @@ async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_co
             print('calculate_trajectory:', time.time() - start)
 
             start = time.time()
-            traj.prepare_trajectory_to_send()
+            fut = executor.submit(traj.prepare_trajectory_to_send)
+            while fut.running():
+                await asyncio.sleep(0.05)
+            # traj.prepare_trajectory_to_send()
             print('prepare_trajectory_to_send:', time.time() - start)
 
             print('Sending trajectory to JTC')
