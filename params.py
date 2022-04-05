@@ -27,7 +27,7 @@ class Joint_FSM(enum.Enum):
 
 class Host_FT(enum.Enum):
     Header = 155
-    Host_FT_null = 0
+    Null = 0
     ClearCurrentErrors = enum.auto()
     ClearOccuredErrors = enum.auto()
     JtcStatus = enum.auto()
@@ -104,7 +104,7 @@ class TES(enum.Enum):
 
 
 COMFRAMETOSYNCHROSENDMAX = 1
-COMBUFREADMAX = 10000
+COMBUFREADMAX = 100000
 COMTIMESEND = 25
 COMTIMEREAD = 15
 COMTIMEOUT = 1000
