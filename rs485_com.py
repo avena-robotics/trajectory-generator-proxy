@@ -46,8 +46,8 @@ class RSComm:
     def read_serial_buffer(self):
         while True:
             new_buffer = self.port.read_all()
-            if len(new_buffer) > 500:
-                print(f'\nBIG: {len(new_buffer)}\n')
+            # if len(new_buffer) > 500:
+            #     print(f'\nBIG: {len(new_buffer)}\n')
             with self.read_bytes_buffer_mtx:
                 self.read_bytes_buffer += new_buffer
             time.sleep(0.01)
@@ -58,11 +58,11 @@ class RSComm:
             return
         if len(self.read_bytes_buffer) > params.COMBUFREADMAX:
             self.read_bytes_buffer = b''
-            print('len(self.read_bytes_buffer) > params.COMBUFREADMAX')
+            # print('len(self.read_bytes_buffer) > params.COMBUFREADMAX')
             return
         if (header_idx := self.read_bytes_buffer.find(params.Host_FT['Header'].value)) > params.COMBUFREADMAX - 4:
             self.read_bytes_buffer = b''
-            print('header_idx := self.read_bytes_buffer.find(params')
+            # print('header_idx := self.read_bytes_buffer.find(params')
             return
         # if self.read_bytes_buffer[header_idx+1] != params.Host_FT.JtcStatus.value:
         #     self.read_bytes_buffer = b''
@@ -75,7 +75,7 @@ class RSComm:
             return
         if nd > params.COMBUFREADMAX:
             self.read_bytes_buffer = b''
-            print('nd > params.COMBUFREADMAX')
+            # print('nd > params.COMBUFREADMAX')
             return
 
         # Save valid buffer
@@ -255,9 +255,9 @@ class RSComm:
 
     async def send_trajectory(self, traj):
         seg_num = 0
-        print(f'len(traj.seg): {len(traj.seg)}')
+        # print(f'len(traj.seg): {len(traj.seg)}')
         while seg_num < len(traj.seg):
-            print(f'seg: {[traj.seg[seg_num].strToSend[i] for i in range(10)]}')
+            # print(f'seg: {[traj.seg[seg_num].strToSend[i] for i in range(10)]}')
             self.port.write(traj.seg[seg_num].strToSend)
             # self.port.flush()
             while True:
@@ -278,7 +278,7 @@ class RSComm:
         # Wait for TES_Stop status meaning that trajectory was successfully received by JTC
         print('Waiting for TES to change to Stop...')
         while True:
-            print(self.response_info)
+            # print(self.response_info)
             if self.response_info.frame_type == params.Host_FT.Null and \
                 self.response_info.frame_status == params.Host_RxFS.Idle and \
                 self.response_info.data_status == params.Host_RxDS.Idle and \

@@ -28,21 +28,12 @@ class ModbusServer:
         self.data_store = defaultdict(int)
         self.jtc_status=[0]
         self.app = get_server(RTUServer, self.s)
-        self.flags=[False]
+        self.flags = defaultdict(bool)
+        self.flags['send_waypoints'] = False
         
-        # self.data_store_mtx = threading.Lock()
-        # self.jtc_status_mtx = threading.Lock()
-        # self.flags_mtx = threading.Lock()
-
         @self.app.route(slave_ids=[1], function_codes=[1, 2, 3], addresses=list(range(0, 1000)))
         def read_data_store(slave_id, function_code, address):
             # """" Return value of address. """
-            # if address == 1:
-            #     self.jtc_status_mtx.acquire()
-            
-            # if address == 122:
-            #     self.jtc_status_mtx.release()
-
             return self.jtc_status[0][address]
 
         @self.app.route(slave_ids=[1], function_codes=[5, 15, 16], addresses=list(range(751, 774)))
@@ -51,12 +42,11 @@ class ModbusServer:
             # print(f'Address: {address}, value: {value}')
             self.data_store[address] = value
             if address == MB_START_PATH_REG + 22: # Point 0 received
-                self.flags[0] = True
+                self.flags['send_waypoints'] = True
 
     async def handle_request(self):
         while True:
             await asyncio.sleep(0.05)
-            # time.sleep(0.01)
             try:
                 self.app.serve_once()
             except (CRCError, struct.error) as e:

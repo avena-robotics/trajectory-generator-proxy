@@ -1,8 +1,7 @@
 import struct
-import time
 from fastcrc import crc16
 
-import params, rs485_com
+import params
 
 
 class TrajectorySegment:
@@ -44,8 +43,6 @@ class Trajectory:
             self.seg.append(TrajectorySegment())
             self.prepare_segments(self.seg[i], i)
             self.prepare_segments_to_send(self.seg[i])
-            if i == 0:
-                print(len(self.seg[i].strToSend), self.seg[i].strToSend[2], self.seg[i].strToSend[3])
         self.numOfSegToSend = 0
         self.isSend = True
         print(f'Number of points in trajectory: {self.lenPointsInTraj}')
@@ -83,29 +80,20 @@ class Trajectory:
         seg.strToSend[8:10] = int.to_bytes(seg.lenSegsInTraj, 2, 'big', signed=False)
         seg.strToSend[10:12] = int.to_bytes(seg.stepTime, 2, 'big', signed=False)
 
-        s0 = time.time()
+        # s0 = time.time()
         seg.value[0, :, :] = seg.value[0, :, :] / params.JOINT_POSMAX * params.MAX_INT16
         seg.value[1, :, :] = seg.value[1, :, :] / params.JOINT_VELMAX * params.MAX_INT16
         seg.value[2, :, :] = seg.value[2, :, :] / params.JOINT_ACCMAX * params.MAX_INT16
         seg.value = seg.value.astype(int)
         for i in range(seg.lenPointsInSeg):
             offset = 12 + i * 36
-            # val = (seg.value[0][i] / params.JOINT_POSMAX * params.MAX_INT16).astype(int)
             seg.strToSend[offset:offset+12] = struct.pack('>hhhhhh', *(seg.value[0][i]))
-            # val = (seg.value[1][i] / params.JOINT_VELMAX * params.MAX_INT16).astype(int)
             seg.strToSend[offset+12:offset+24] = struct.pack('>hhhhhh', *(seg.value[1][i]))
-            # val = (seg.value[2][i] / params.JOINT_ACCMAX * params.MAX_INT16).astype(int)
             seg.strToSend[offset+24:offset+36] = struct.pack('>hhhhhh', *(seg.value[2][i]))
-        s1 = time.time()
-        print(f'append traj: {s1 - s0}')
+        # s1 = time.time()
+        # print(f'append traj: {s1 - s0}')
 
-        # crc = rs485_com.get_crc(seg.strToSend, len(seg.strToSend) - 2)
-        # crc = self.crc_calc.calculate_checksum(seg.strToSend[:-2])
         # s2 = time.time()
         crc = crc16.xmodem(bytes(seg.strToSend[:-2]))
         # s3 = time.time()
-        # print(f'new CRC: {s3 - s2}')
-        # print(f'our crc: {crc}; new CRC: {new_crc}')
         seg.strToSend[-2:] = int.to_bytes(crc, 2, 'big', signed=False)
-
-        # print('prepare single seg:', time.time() - start)
