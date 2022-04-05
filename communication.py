@@ -17,13 +17,12 @@ def convert_to_float(high_16bit: int, low_16bit: int) -> float:
     res = struct.unpack('>f', val)
     return res[0]
 
-def calculate_trajectory(start_config: np.array, goal_config: np.array):
+def calculate_trajectory(start_config: np.array, goal_config: np.array) -> np.ndarray:
     max_diff = np.max(np.abs(goal_config - start_config))
     time = max_diff / params.MAX_VEL
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
     rtb_traj = jtraj(start_config, goal_config, time_vec)
     traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
-    # print(traj)
     return traj
 
 async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
@@ -39,9 +38,6 @@ async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_co
             print('goal_config:', goal_config)
             traj = trajectory.Trajectory()
             
-            ###
-            # traj.value = calculate_trajectory(np.array(rs_com.current_config), np.array(goal_config))
-            ###
             start = time.time()
             fut = executor.submit(calculate_trajectory,np.array(rs_com.current_config), np.array(goal_config))
             while fut.running():
@@ -50,13 +46,22 @@ async def calculate_and_send_traj(flag: List, traj_container: DefaultDict, rs_co
             print('calculate_trajectory:', time.time() - start)
 
             start = time.time()
-            fut = executor.submit(traj.prepare_trajectory_to_send)
-            while fut.running():
+            fut2 = executor.submit(traj.prepare_trajectory_to_send)
+            while fut2.running():
                 await asyncio.sleep(0.05)
+            print('fut2 result:', fut2.result())
             # traj.prepare_trajectory_to_send()
             print('prepare_trajectory_to_send:', time.time() - start)
 
+            print('after:', len(traj.seg[0].strToSend), traj.seg[0].strToSend[2], traj.seg[0].strToSend[3])
+
             print('Sending trajectory to JTC')
+            # print('\n\n')
+            # print('second last from first:', traj.seg[0].value[0, -2, :])
+            # print('last from first:', traj.seg[0].value[0, -1, :])
+            # print('first from second:', traj.seg[1].value[0, 0, :])
+            # print('second from second:', traj.seg[1].value[0, 1, :])
+            # print('\n\n')
             await rs_com.send_trajectory(traj)
             print('Trigger trajectory execution')
             rs_com.execute_trajectory()
