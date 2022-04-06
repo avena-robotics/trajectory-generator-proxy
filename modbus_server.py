@@ -26,10 +26,23 @@ class ModbusServer:
             timeout = 0.1
         )
         self.data_store = defaultdict(int)
+        self.control_words = defaultdict(int)
+        # self.control_words = {
+        #     'clear_current_errors': False,
+        #     'clear_occured_errors': False,
+        #     'friction_table_use_default': False,
+        #     'pid_param_use_default': False,
+        #     'arm_model_use_default': False,
+        #     'teaching_mode_enable': False,
+        #     'teaching_mode_disable': False,
+        #     'friction_polynomial_use_default': False,
+        # }
         self.jtc_status=[0]
         self.app = get_server(RTUServer, self.s)
-        self.flags = defaultdict(bool)
-        self.flags['send_waypoints'] = False
+        self.flags = {
+            'send_waypoints': False,
+            'send_control_word': False,
+        }
         
         @self.app.route(slave_ids=[1], function_codes=[1, 2, 3], addresses=list(range(0, 1000)))
         def read_data_store(slave_id, function_code, address):
@@ -43,6 +56,14 @@ class ModbusServer:
             self.data_store[address] = value
             if address == MB_START_PATH_REG + 22: # Point 0 received
                 self.flags['send_waypoints'] = True
+
+        @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(201, 209)))
+        def write_control_words(slave_id, function_code, address, value):
+            """" Set control words. """
+            # print(f'Address: {address}, value: {value}')
+            self.control_words[address] = value
+            if address == 208:
+                self.flags['send_control_word'] = True
 
     async def handle_request(self):
         while True:
