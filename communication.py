@@ -16,9 +16,14 @@ def convert_to_float(high_16bit: int, low_16bit: int) -> float:
     res = struct.unpack('>f', val)
     return res[0]
 
-def calculate_trajectory(start_config: np.array, goal_config: np.array) -> np.ndarray:
+def calculate_trajectory(start_config: np.array, goal_config: np.array, max_speed: float) -> np.ndarray:
+    '''
+    Joint which has the longes angular distance from start to goal value,
+    moves the fastest and it determines full time of 
+    '''
     max_diff = np.max(np.abs(goal_config - start_config))
-    time = max_diff / params.MAX_VEL
+    max_speed = min(max_speed, params.MAX_VEL)
+    time = max_diff / max_speed
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
     rtb_traj = jtraj(start_config, goal_config, time_vec)
     traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
@@ -44,10 +49,12 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
         offset = modbus_server.MB_START_PATH_REG + 3 + i * 2
         goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset+1]))
     print('Goal config:', goal_config)
+    max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG+15], mb_server.data_store[modbus_server.MB_START_PATH_REG+15+1])
+    print('Max speed:', max_speed, 'rad/s')
     traj = trajectory.Trajectory()
     
     s0 = time.time()
-    fut = executor.submit(calculate_trajectory, np.array(rs_com.current_config), np.array(goal_config))
+    fut = executor.submit(calculate_trajectory, np.array(rs_com.current_config), np.array(goal_config), max_speed)
     while fut.running():
         await asyncio.sleep(0.05)
     traj.value=fut.result()
