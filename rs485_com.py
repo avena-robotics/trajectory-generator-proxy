@@ -1,4 +1,3 @@
-import ctypes
 import enum
 import struct
 import serial
@@ -6,19 +5,8 @@ import asyncio
 import time
 import threading
 
+from commons import get_crc
 import params, jtc_vars, trajectory
-
-
-def get_crc(frame, nbytes):
-    crc = 0
-    for byte in range(nbytes):
-        crc = ctypes.c_uint16(ctypes.c_uint16(crc).value ^ (frame[byte] << 8)).value
-        for bit in range(8):
-            if crc & 0x8000:
-                crc = ctypes.c_uint16(ctypes.c_uint16(crc << 1).value ^ 0x1021).value
-            else:
-                crc = ctypes.c_uint16(crc << 1).value
-    return ctypes.c_uint16(crc).value
 
 
 class RSResponseInfo:
@@ -32,7 +20,6 @@ class RSResponseInfo:
 
 
 class RSComm:
-
     def __init__(self):
         self.port = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE,
                                   stopbits=1, bytesize=8, timeout=1)
@@ -249,7 +236,7 @@ class RSComm:
         msg = struct.pack('>BB', params.Host_FT.Header.value, command.value)
         nd = len(msg) + 4
         msg += struct.pack('>H', nd)
-        crc = get_crc(msg, len(msg))
+        crc = get_crc(msg)
         msg += struct.pack('>H', crc)
         self.port.write(msg)
 
@@ -287,13 +274,13 @@ class RSComm:
             await asyncio.sleep(0.015)
     
     def execute_trajectory(self):
-        # FIXME: Do it better, more generic
+        # FIXME: Do it better, more generic, use send_command method
         msg = struct.pack('>BB', params.Host_FT.Header.value, params.Host_FT.TrajSetExecStatus.value)
         msg += struct.pack('>H', 0) # placeholder for nd
         msg += struct.pack('>B', params.TES.Execute.value)
         nd = len(msg) + 2
         msg = msg.replace(msg[2:4], struct.pack('>H', nd), 1)
-        crc = get_crc(msg, len(msg))
+        crc = get_crc(msg)
         msg += struct.pack('>H', crc)
         self.port.write(msg)
                 

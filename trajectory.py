@@ -1,7 +1,6 @@
 import struct
-from fastcrc import crc16
-
 import params
+from commons import get_crc
 
 
 class TrajectorySegment:
@@ -94,6 +93,7 @@ class Trajectory:
         # print(f'append traj: {s1 - s0}')
 
         # s2 = time.time()
-        crc = crc16.xmodem(bytes(seg.strToSend[:-2]))
+        crc = get_crc(seg.strToSend[:-2])
+        # crc = crc16.xmodem(bytes(seg.strToSend[:-2]))
         # s3 = time.time()
         seg.strToSend[-2:] = int.to_bytes(crc, 2, 'big', signed=False)
