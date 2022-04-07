@@ -72,8 +72,27 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     print('Trajectory successfully send')
 
 async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
-    print('send_control_word')
-    # rs_com.send_command(params.)
+    command = params.Host_FT(0)
+    for i in range(modbus_server.MB_START_CONTROL_REG, modbus_server.MB_END_CONTROL_REG + 1):
+        if mb_server.control_words[i]:
+            if i == modbus_server.MB_START_CONTROL_REG:
+                command = params.Host_FT.ClearCurrentErrors
+            elif i == modbus_server.MB_START_CONTROL_REG + 1:
+                command = params.Host_FT.ClearOccuredErrors
+            elif i == modbus_server.MB_START_CONTROL_REG + 2:
+                command = params.Host_FT.FrictionTableUseDefault
+            elif i == modbus_server.MB_START_CONTROL_REG + 3:
+                command = params.Host_FT.PidParamUseDefault
+            elif i == modbus_server.MB_START_CONTROL_REG + 4:
+                command = params.Host_FT.ArmModelUseDefault
+            elif i == modbus_server.MB_START_CONTROL_REG + 5:
+                command = params.Host_FT.TeachingModeEnable
+            elif i == modbus_server.MB_START_CONTROL_REG + 6:
+                command = params.Host_FT.TeachingModeDisable
+            elif i == modbus_server.MB_START_CONTROL_REG + 7:
+                command = params.Host_FT.FrictionPolynomialUseDefault
+    rs_com.send_command(command)
+
 
 async def main():
     print('Starting proxy program between Codesys and STM JTC')

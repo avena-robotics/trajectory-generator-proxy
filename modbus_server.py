@@ -68,7 +68,7 @@ class ModbusServer:
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_CONTROL_REG, MB_END_CONTROL_REG + 1)))
         def write_control_words(slave_id, function_code, address, value):
             """" Set control words. """
-            print(f'{__name__}. Address: {address}, value: {value}')
+            # print(f'{__name__}. Address: {address}, value: {value}')
             self.control_words[address] = value
             if address == MB_END_CONTROL_REG:
                 self.flags.send_control_word = True
