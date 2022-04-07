@@ -7,7 +7,6 @@ import numpy as np
 import struct
 import params
 import time
-from typing import DefaultDict, List
 from roboticstoolbox.tools import jtraj
 
 np.set_printoptions(suppress=True)   
@@ -27,17 +26,18 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array) -> np.nd
 
 async def handle_flags(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
     while True:
-        if mb_server.flags['send_waypoints']:
-            mb_server.flags['send_waypoints'] = False
-            calculate_and_send_traj(mb_server, rs_com, executor)
-        elif mb_server.flags['send_control_word']:
-            mb_server.flags['send_control_word'] = False
-            send_control_word(mb_server, rs_com, executor)
+        if mb_server.flags.send_waypoints:
+            mb_server.flags.send_waypoints = False
+            # FIXME: Uncomment
+            await calculate_and_send_traj(mb_server, rs_com, executor)
+            # print('calculate_and_send_traj')
+        elif mb_server.flags.send_control_word:
+            mb_server.flags.send_control_word = False
+            await send_control_word(mb_server, rs_com, executor)
         await asyncio.sleep(0.1)
 
 async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
     print('Calculate and send trajectory...')
-    mb_server.flags['send_waypoints'] = False
     # Deserialize data receive from Modbus to get goal config
     goal_config = [] 
     for i in range(params.JOINTS_MAX):
@@ -66,12 +66,14 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
 
     print('Sending trajectory to JTC')
     await rs_com.send_trajectory(traj)
+    # TODO: Trajectory execution should be trigger as a control word
     print('Trigger trajectory execution')
     rs_com.execute_trajectory()
     print('Trajectory successfully send')
 
 async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
-    print('send_control_word')        
+    print('send_control_word')
+    # rs_com.send_command(params.)
 
 async def main():
     print('Starting proxy program between Codesys and STM JTC')
@@ -84,9 +86,6 @@ async def main():
     tasks.append(asyncio.create_task(rs_com.update_stm_status(mb_serv)))
     tasks.append(asyncio.create_task(mb_serv.handle_request()))
     tasks.append(asyncio.create_task(handle_flags(mb_serv, rs_com, traj_calc_exec)))
-    
-    # mb_thread = threading.Thread(target=mb_serv.handle_request)
-    # mb_thread.start()
 
     print('Running...')
     g = await asyncio.gather(*tasks)
