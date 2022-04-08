@@ -33,9 +33,7 @@ async def handle_flags(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.
     while True:
         if mb_server.flags.send_waypoints:
             mb_server.flags.send_waypoints = False
-            # FIXME: Uncomment
             await calculate_and_send_traj(mb_server, rs_com, executor)
-            # print('calculate_and_send_traj')
         elif mb_server.flags.send_control_word:
             mb_server.flags.send_control_word = False
             await send_control_word(mb_server, rs_com, executor)
