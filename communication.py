@@ -9,12 +9,14 @@ import params
 import time
 from roboticstoolbox.tools import jtraj
 
-np.set_printoptions(suppress=True)   
+np.set_printoptions(suppress=True)
+
 
 def convert_to_float(high_16bit: int, low_16bit: int) -> float:
     val = struct.pack('>H', high_16bit) + struct.pack('>H', low_16bit)
     res = struct.unpack('>f', val)
     return res[0]
+
 
 def calculate_trajectory(start_config: np.array, goal_config: np.array, max_speed: float) -> np.ndarray:
     '''
@@ -29,6 +31,7 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array, max_spee
     traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
     return traj
 
+
 async def handle_flags(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
     while True:
         if mb_server.flags.send_waypoints:
@@ -39,25 +42,28 @@ async def handle_flags(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.
             await send_control_word(mb_server, rs_com, executor)
         await asyncio.sleep(0.1)
 
-async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
+
+async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm,
+                                  executor: ThreadPoolExecutor):
     print('Calculate and send trajectory...')
     # Deserialize data receive from Modbus to get goal config
-    goal_config = [] 
+    goal_config = []
     for i in range(params.JOINTS_MAX):
         offset = modbus_server.MB_START_PATH_REG + 3 + i * 2
-        goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset+1]))
+        goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset + 1]))
     print('Goal config:', goal_config)
-    max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG+15], mb_server.data_store[modbus_server.MB_START_PATH_REG+15+1])
+    max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 15],
+                                 mb_server.data_store[modbus_server.MB_START_PATH_REG + 15 + 1])
     print('Max speed:', max_speed, 'rad/s')
     traj = trajectory.Trajectory()
-    
+
     s0 = time.time()
     fut = executor.submit(calculate_trajectory, np.array(rs_com.current_config), np.array(goal_config), max_speed)
     while fut.running():
         await asyncio.sleep(0.05)
-    traj.value=fut.result()
+    traj.value = fut.result()
     print('calculate_trajectory:', time.time() - s0, 's')
-    
+
     await asyncio.sleep(0.02)
 
     s0 = time.time()
@@ -76,8 +82,11 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     # rs_com.execute_trajectory()
     print('Trajectory successfully send')
 
-async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
+
+async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm,
+                            executor: ThreadPoolExecutor):
     command = params.Host_FT(0)
+    param_list = []
     for i in range(modbus_server.MB_START_CONTROL_REG, modbus_server.MB_END_CONTROL_REG + 1):
         if mb_server.control_words[i]:
             if i == modbus_server.MB_START_CONTROL_REG:
@@ -96,7 +105,12 @@ async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485
                 command = params.Host_FT.TeachingModeDisable
             elif i == modbus_server.MB_START_CONTROL_REG + 7:
                 command = params.Host_FT.FrictionPolynomialUseDefault
-    rs_com.send_command(command)
+            # elif i == modbus_server.MB_START_CONTROL_REG + 8:
+            #     command = params.Host_FT.FrictionPolynomialUseDefault
+            elif i == modbus_server.MB_START_CONTROL_REG + 9:
+                command = params.Host_FT.TrajSetExecStatus
+                param_list.append(params.TES(mb_server.control_words[i]))
+    rs_com.send_command(command, param_list)
 
 
 async def main():
