@@ -25,7 +25,7 @@ class RSComm:
                                   stopbits=1, bytesize=8, timeout=1)
         self.jtc_status = []
         self.response_info = RSResponseInfo()
-        self.current_config = [0] * 6 # current robotic arm values in radians
+        self.current_config = [0] * 6  # current robotic arm values in radians
         self.read_bytes_buffer = b''
         self.read_bytes_buffer_mtx = threading.Lock()
         self.read_serial_thread = threading.Thread(target=self.read_serial_buffer, daemon=True).start()
@@ -56,7 +56,7 @@ class RSComm:
         #     return
         # print('header_idx:', header_idx)
         nd = int.from_bytes(self.read_bytes_buffer[header_idx + 2:header_idx + 4], 'big', signed=False)
-        if len(self.read_bytes_buffer) < (header_idx+nd):
+        if len(self.read_bytes_buffer) < (header_idx + nd):
             return
         if nd < 4:
             return
@@ -79,7 +79,7 @@ class RSComm:
         ##################################################
 
         # self.jtc_status = self.read_jtc_status(read_buffer)
-        ret=self.translate_to_modbus(read_buffer)
+        ret = self.translate_to_modbus(read_buffer)
         self.response_info = self.translate_frame(read_buffer)
         # print('received info:', self.response_info)
 
@@ -101,99 +101,98 @@ class RSComm:
         return response
 
     def translate_to_modbus(self, frame):
-        mb_frame=[-1] # There is nothing at index 0 (according to Excel documentation describing registers)
-        
+        mb_frame = [-1]  # There is nothing at index 0 (according to Excel documentation describing registers)
+
         # JTC current FSM
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[9:10]))
-        
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[9:10]))
+
         # JTC current errors
-        mb_frame+=list(struct.unpack('>H',frame[10:12]))
-        
+        mb_frame += list(struct.unpack('>H', frame[10:12]))
+
         # JTC occured errors
-        mb_frame+=list(struct.unpack('>H',frame[12:14]))
+        mb_frame += list(struct.unpack('>H', frame[12:14]))
 
         # JTC init status
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[14:15]))
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[14:15]))
 
         # JTC joint init status
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[15:16]))
-        
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[15:16]))
+
         # Traj execution status
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[16:17]))
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[16:17]))
 
         # Traj num current point
-        mb_frame+=list(struct.unpack('>HH',frame[17:21]))
+        mb_frame += list(struct.unpack('>HH', frame[17:21]))
 
         # Friction type
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[21:22]))
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[21:22]))
 
         # CAN current status
-        mb_frame+=list(struct.unpack('>H',b'\x00'+frame[22:23]))
+        mb_frame += list(struct.unpack('>H', b'\x00' + frame[22:23]))
 
         # CAN current errors
-        mb_frame+=list(struct.unpack('>HH',frame[23:27]))
+        mb_frame += list(struct.unpack('>HH', frame[23:27]))
 
         # CAN occured errors
-        mb_frame+=list(struct.unpack('>HH',frame[27:31]))
+        mb_frame += list(struct.unpack('>HH', frame[27:31]))
 
         # Joints 0 - 5
         for i in range(6):
             offset = 31 + i * 22
             # Joint current FSM
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset:offset+1]))
-            
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset:offset + 1]))
+
             # Joint MC current errors
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+1:offset+2]))
-            
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset + 1:offset + 2]))
+
             # Joint MC occured errors
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+2:offset+3]))
-            
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset + 2:offset + 3]))
+
             # Joint current errors
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+3:offset+4]))
-            
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset + 3:offset + 4]))
+
             # Joint current warnings
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+4:offset+5]))
-            
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset + 4:offset + 5]))
+
             # Joint internal errors
-            mb_frame+=list(struct.unpack('>H',frame[offset+5:offset+7]))
-            
+            mb_frame += list(struct.unpack('>H', frame[offset + 5:offset + 7]))
+
             # Joint internal occured errors
-            mb_frame+=list(struct.unpack('>H',frame[offset+7:offset+9]))
+            mb_frame += list(struct.unpack('>H', frame[offset + 7:offset + 9]))
 
             # Joint current position
-            mb_frame+=list(struct.unpack('>HH',frame[offset+9:offset+13]))
+            mb_frame += list(struct.unpack('>HH', frame[offset + 9:offset + 13]))
 
             #####################################################
             # Save current position for i-th joint
-            self.current_config[i] = struct.unpack('>f', frame[offset+9:offset+13])[0]
+            self.current_config[i] = struct.unpack('>f', frame[offset + 9:offset + 13])[0]
             #####################################################
-            
+
             # Joint current velocity
-            mb_frame+=list(struct.unpack('>HH',frame[offset+13:offset+17]))
-            
+            mb_frame += list(struct.unpack('>HH', frame[offset + 13:offset + 17]))
+
             # Joint current torque
-            mb_frame+=list(struct.unpack('>HH',frame[offset+17:offset+21]))
-            
+            mb_frame += list(struct.unpack('>HH', frame[offset + 17:offset + 21]))
+
             # Joint temperature
-            mb_frame+=list(struct.unpack('>H',b'\x00'+frame[offset+21:offset+22]))
+            mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset + 21:offset + 22]))
 
         # Joint 6 (reserved for future use)
-        mb_frame+=[0] * 14
+        mb_frame += [0] * 14
 
         # Digital input
-        mb_frame+=[0]
+        mb_frame += [0]
 
         # Digital output
-        mb_frame+=[0]
+        mb_frame += [0]
 
         # Analog inputs 0 - 3
-        mb_frame+=[0] * 4
+        mb_frame += [0] * 4
 
         # Analog outputs 0 - 3
-        mb_frame+=[0] * 4
+        mb_frame += [0] * 4
 
         return mb_frame
-
 
     def read_jtc_status(self, frame):
         output = [jtc_vars.JTCStatus(), jtc_vars.CANStatus(), trajectory.Trajectory(), [jtc_vars.JointStatus()] * 6]
@@ -216,11 +215,10 @@ class RSComm:
             output[3][i].currentFsm = frame[offset]
             output[3][i].mcCurrentError = frame[offset + 1]
             output[3][i].mcOccurredError = frame[offset + 2]
-            output[3][i].currentError =frame[offset +3]
-            output[3][i].currentWarning =frame[offset +4]
+            output[3][i].currentError = frame[offset + 3]
+            output[3][i].currentWarning = frame[offset + 4]
             output[3][i].internalErrors = int.from_bytes(frame[offset + 5:offset + 7], 'big', signed=False)
             output[3][i].internalOccurredErrors = int.from_bytes(frame[offset + 7:offset + 9], 'big', signed=False)
-
 
             [output[3][i].pos] = struct.unpack('>f', frame[offset + 9:offset + 13])
             [output[3][i].vel] = struct.unpack('>f', frame[offset + 13:offset + 17])
@@ -232,10 +230,12 @@ class RSComm:
 
     # killme
 
-    def send_command(self, command: enum.Enum):
+    def send_command(self, command: enum.Enum, param_list: list = []):
         msg = struct.pack('>BB', params.Host_FT.Header.value, command.value)
-        nd = len(msg) + 4
+        nd = len(msg) + 4 + len(param_list)
         msg += struct.pack('>H', nd)
+        for param in param_list:
+            msg += struct.pack('>B', param.value)
         crc = get_crc(msg)
         msg += struct.pack('>H', crc)
         self.port.write(msg)
@@ -251,12 +251,13 @@ class RSComm:
                 # print('Waiting to get traj status')
                 if self.response_info.frame_type == params.Host_FT.Trajectory:
                     if self.response_info.frame_status == params.Host_RxFS.NoError and \
-                       self.response_info.data_status == params.Host_RxDS.NoError:
+                            self.response_info.data_status == params.Host_RxDS.NoError:
                         # Trajectory successfully sent, send next segment
                         seg_num += 1
-                    else: 
+                    else:
 
-                        print('[ERROR]: JTC returned error while receiving trajectory. Response info:', self.response_info)
+                        print('[ERROR]: JTC returned error while receiving trajectory. Response info:',
+                              self.response_info)
                         seg_num = 0
                     break
                 await asyncio.sleep(0.005)
@@ -267,30 +268,30 @@ class RSComm:
         while True:
             # print(self.response_info)
             if self.response_info.frame_type == params.Host_FT.Null and \
-                self.response_info.frame_status == params.Host_RxFS.Idle and \
-                self.response_info.data_status == params.Host_RxDS.Idle and \
-                self.response_info.tes == params.TES.Stop:
+                    self.response_info.frame_status == params.Host_RxFS.Idle and \
+                    self.response_info.data_status == params.Host_RxDS.Idle and \
+                    self.response_info.tes == params.TES.Stop:
                 break
             await asyncio.sleep(0.015)
-    
+
     def execute_trajectory(self):
         # FIXME: Do it better, more generic, use send_command method
         msg = struct.pack('>BB', params.Host_FT.Header.value, params.Host_FT.TrajSetExecStatus.value)
-        msg += struct.pack('>H', 0) # placeholder for nd
+        msg += struct.pack('>H', 0)  # placeholder for nd
         msg += struct.pack('>B', params.TES.Execute.value)
         nd = len(msg) + 2
         msg = msg.replace(msg[2:4], struct.pack('>H', nd), 1)
         crc = get_crc(msg)
         msg += struct.pack('>H', crc)
         self.port.write(msg)
-                
+
     async def update_stm_status(self, mb_server):
         while True:
             with self.read_bytes_buffer_mtx:
                 ret = self.read_st_frame()
             if ret is not None:
                 # with mb_server.jtc_status_mtx:
-                mb_server.jtc_status[0]=ret
+                mb_server.jtc_status[0] = ret
             await asyncio.sleep(0.005)
 
     async def msg_dispatch(self, q):

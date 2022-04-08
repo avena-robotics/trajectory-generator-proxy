@@ -18,7 +18,7 @@ def convert_to_float(high_16bit: int, low_16bit: int) -> float:
 
 def calculate_trajectory(start_config: np.array, goal_config: np.array, max_speed: float) -> np.ndarray:
     '''
-    Joint which has the longes angular distance from start to goal value,
+    Joint which has the longest angular distance from start to goal value,
     moves the fastest and it determines full time of 
     '''
     max_diff = np.max(np.abs(goal_config - start_config))
@@ -75,7 +75,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     await rs_com.send_trajectory(traj)
     # TODO: Trajectory execution should be trigger as a control word
     print('Trigger trajectory execution')
-    rs_com.execute_trajectory()
+    # rs_com.execute_trajectory()
     print('Trajectory successfully send')
 
 async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm, executor: ThreadPoolExecutor):
