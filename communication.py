@@ -78,7 +78,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     print('Sending trajectory to JTC')
     await rs_com.send_trajectory(traj)
     # TODO: Trajectory execution should be trigger as a control word
-    print('Trigger trajectory execution')
+    # print('Trigger trajectory execution')
     # rs_com.execute_trajectory()
     print('Trajectory successfully send')
 
@@ -108,6 +108,7 @@ async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485
             # elif i == modbus_server.MB_START_CONTROL_REG + 8:
             #     command = params.Host_FT.FrictionPolynomialUseDefault
             elif i == modbus_server.MB_START_CONTROL_REG + 9:
+                print('TES changes to:', params.TES(mb_server.control_words[i]))
                 command = params.Host_FT.TrajSetExecStatus
                 param_list.append(params.TES(mb_server.control_words[i]))
     rs_com.send_command(command, param_list)

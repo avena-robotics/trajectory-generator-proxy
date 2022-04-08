@@ -68,7 +68,6 @@ class Trajectory:
         seg.value = self.value[:, start_idx:finish_idx, :]
 
     def prepare_segments_to_send(self, seg: TrajectorySegment):
-        # start = time.time()
         seg.strToSend = bytearray(seg.lenBytesInSeg)
         seg.strToSend[0:1] = int.to_bytes(params.Host_FT.Header.value, 1, 'big', signed=False)
         seg.strToSend[1:2] = int.to_bytes(params.Host_FT.Trajectory.value, 1, 'big', signed=False)
@@ -79,7 +78,6 @@ class Trajectory:
         seg.strToSend[8:10] = int.to_bytes(seg.lenSegsInTraj, 2, 'big', signed=False)
         seg.strToSend[10:12] = int.to_bytes(seg.stepTime, 2, 'big', signed=False)
 
-        # s0 = time.time()
         seg.value[0, :, :] = seg.value[0, :, :] / params.JOINT_POSMAX * params.MAX_INT16
         seg.value[1, :, :] = seg.value[1, :, :] / params.JOINT_VELMAX * params.MAX_INT16
         seg.value[2, :, :] = seg.value[2, :, :] / params.JOINT_ACCMAX * params.MAX_INT16
@@ -89,11 +87,6 @@ class Trajectory:
             seg.strToSend[offset:offset+12] = struct.pack('>hhhhhh', *(seg.value[0][i]))
             seg.strToSend[offset+12:offset+24] = struct.pack('>hhhhhh', *(seg.value[1][i]))
             seg.strToSend[offset+24:offset+36] = struct.pack('>hhhhhh', *(seg.value[2][i]))
-        # s1 = time.time()
-        # print(f'append traj: {s1 - s0}')
 
-        # s2 = time.time()
         crc = get_crc(seg.strToSend[:-2])
-        # crc = crc16.xmodem(bytes(seg.strToSend[:-2]))
-        # s3 = time.time()
         seg.strToSend[-2:] = int.to_bytes(crc, 2, 'big', signed=False)

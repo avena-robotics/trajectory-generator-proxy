@@ -23,6 +23,7 @@ class RSComm:
     def __init__(self):
         self.port = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE,
                                   stopbits=1, bytesize=8, timeout=1)
+        self.port.flush()
         self.jtc_status = []
         self.response_info = RSResponseInfo()
         self.current_config = [0] * 6  # current robotic arm values in radians

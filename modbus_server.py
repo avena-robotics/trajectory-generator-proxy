@@ -35,6 +35,7 @@ class ModbusServer:
             stopbits=serialutil.STOPBITS_ONE,
             timeout = 0.1
         )
+        self.s.flush()
         self.data_store = defaultdict(int)
         self.control_words = defaultdict(int)
         # self.control_words = {
@@ -55,6 +56,8 @@ class ModbusServer:
         def read_data_store(slave_id, function_code, address):
             # """" Return value of address. """
             # print(f'Telemetry. Address: {address}')
+            # if address == MB_END_TELEMETRY_REG:
+            #     print(time.time_ns())
             return self.jtc_status[0][address]
 
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_PATH_REG, MB_END_PATH_REG + 1)))
