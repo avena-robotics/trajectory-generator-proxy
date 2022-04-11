@@ -110,7 +110,7 @@ async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485
             elif i == modbus_server.MB_START_CONTROL_REG + 9:
                 print('TES changes to:', params.TES(mb_server.control_words[i]))
                 command = params.Host_FT.TrajSetExecStatus
-                param_list.append(params.TES(mb_server.control_words[i]))
+                param_list.append(params.TES(mb_server.control_words[i]).value)
     rs_com.send_command(command, param_list)
 
 

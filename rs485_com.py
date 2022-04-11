@@ -138,7 +138,7 @@ class RSComm:
         mb_frame += list(struct.unpack('>HH', frame[27:31]))
 
         # Joints 0 - 5
-        for i in range(6):
+        for i in range(params.JOINTS_MAX):
             offset = 31 + i * 22
             # Joint current FSM
             mb_frame += list(struct.unpack('>H', b'\x00' + frame[offset:offset + 1]))
@@ -233,10 +233,17 @@ class RSComm:
 
     def send_command(self, command: enum.Enum, param_list: list = []):
         msg = struct.pack('>BB', params.Host_FT.Header.value, command.value)
-        nd = len(msg) + 4 + len(param_list)
-        msg += struct.pack('>H', nd)
+        msg += struct.pack('>H', 0) # placeholder for nd
+        nd = len(msg) + 2
         for param in param_list:
-            msg += struct.pack('>B', param.value)
+            if type(param) == float:
+                msg += struct.pack('>f', param)
+                nd += 4
+            else:
+                # Currently there are only float and uint8 values as parameter possible
+                msg += struct.pack('>B', param)
+                nd += 1
+        msg = msg.replace(struct.pack('>H', 0), struct.pack('>H', nd), 1)
         crc = get_crc(msg)
         msg += struct.pack('>H', crc)
         self.port.write(msg)
