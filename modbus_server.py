@@ -13,7 +13,7 @@ MB_START_TELEMETRY_REG = 1
 MB_END_TELEMETRY_REG = 122
 
 MB_START_PATH_REG = 751
-MB_END_PATH_REG = MB_START_PATH_REG + 317
+MB_END_PATH_REG = MB_START_PATH_REG + 316
 
 MB_START_CONTROL_REG = 201
 MB_END_CONTROL_REG = MB_START_CONTROL_REG + 99
@@ -55,7 +55,7 @@ class ModbusServer:
         @self.app.route(slave_ids=[1], function_codes=[3], addresses=list(range(MB_START_TELEMETRY_REG, MB_END_TELEMETRY_REG + 1)))
         def read_data_store(slave_id, function_code, address):
             # """" Return value of address. """
-            # print(f'Telemetry. Address: {address}')
+            # print(f'[read_data_store]: Telemetry. Address: {address}')
             # if address == MB_END_TELEMETRY_REG:
             #     print(time.time_ns())
             return self.jtc_status[0][address]
@@ -63,15 +63,15 @@ class ModbusServer:
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_PATH_REG, MB_END_PATH_REG + 1)))
         def write_waypoints(slave_id, function_code, address, value):
             """" Set value for address. """
-            # print(f'{__name__}. Address: {address}, value: {value}')
+            # print(f'[write_waypoints]: Address: {address}, value: {value}')
             self.data_store[address] = value
-            if address == MB_END_PATH_REG: # Point 0 received
+            if address == MB_END_PATH_REG: # All points received
                 self.flags.send_waypoints = True
 
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_CONTROL_REG, MB_END_CONTROL_REG + 1)))
         def write_control_words(slave_id, function_code, address, value):
             """" Set control words. """
-            # print(f'{__name__}. Address: {address}, value: {value}')
+            # print(f'[write_control_words]: Address: {address}, value: {value}')
             self.control_words[address] = value
             if address == MB_END_CONTROL_REG:
                 self.flags.send_control_word = True
