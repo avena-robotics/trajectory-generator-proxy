@@ -48,7 +48,12 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     print('Calculate and send trajectory...')
     # Deserialize data receive from Modbus to get goal config
     goal_config = []
+<<<<<<< HEAD
     wp_num = mb_server.data_store[modbus_server.MB_START_PATH_REG + 1]
+=======
+    wp_num = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 1],
+                              mb_server.data_store[modbus_server.MB_START_PATH_REG + 2])
+>>>>>>> b98e0159257e8daa370e7b51573080828b42cff7
     print('Received', wp_num, 'waypoints')
     traj = trajectory.Trajectory()
     start_config = np.array(rs_com.current_config)
