@@ -54,6 +54,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     start_config = np.array(rs_com.current_config)
     for wp in range(wp_num):
         wp_offset = 2 + wp * 21
+        goal_config = []
         for i in range(params.JOINTS_MAX):
             offset = modbus_server.MB_START_PATH_REG + 1 + i * 2 + wp_offset
             goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset + 1]))
