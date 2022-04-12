@@ -39,7 +39,7 @@ async def handle_flags(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.
             await calculate_and_send_traj(mb_server, rs_com, executor)
         elif mb_server.flags.send_control_word:
             mb_server.flags.send_control_word = False
-            await send_control_word(mb_server, rs_com, executor)
+            await send_control_word(mb_server, rs_com)
         await asyncio.sleep(0.1)
 
 
@@ -54,6 +54,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     start_config = np.array(rs_com.current_config)
     for wp in range(wp_num):
         wp_offset = 2 + wp * 21
+        goal_config = []
         for i in range(params.JOINTS_MAX):
             offset = modbus_server.MB_START_PATH_REG + 1 + i * 2 + wp_offset
             goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset + 1]))
@@ -76,7 +77,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
         await asyncio.sleep(0.02)
 
 
-    if np.size(traj.value,1) > 12000:
+    if np.size(traj.value,1) > params.TRAJ_MAX_POINTS:
         print('Trajectory is too long.')
         return 'dupa'
 
@@ -90,14 +91,10 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
 
     print('Sending trajectory to JTC')
     await rs_com.send_trajectory(traj)
-    # TODO: Trajectory execution should be trigger as a control word
-    # print('Trigger trajectory execution')
-    # rs_com.execute_trajectory()
     print('Trajectory successfully send')
 
 
-async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm,
-                            executor: ThreadPoolExecutor):
+async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm):
     command = params.Host_FT(0)
     param_list = []
     for i in range(modbus_server.MB_START_CONTROL_REG, modbus_server.MB_END_CONTROL_REG + 1):
