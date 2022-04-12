@@ -48,23 +48,38 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
     print('Calculate and send trajectory...')
     # Deserialize data receive from Modbus to get goal config
     goal_config = []
-    for i in range(params.JOINTS_MAX):
-        offset = modbus_server.MB_START_PATH_REG + 3 + i * 2
-        goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset + 1]))
-    print('Goal config:', goal_config)
-    max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 15],
-                                 mb_server.data_store[modbus_server.MB_START_PATH_REG + 15 + 1])
-    print('Max speed:', max_speed, 'rad/s')
+    wp_num = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 1],
+                              mb_server.data_store[modbus_server.MB_START_PATH_REG + 2])
+    print('Received', wp_num, 'waypoints')
     traj = trajectory.Trajectory()
+    start_config = np.array(rs_com.current_config)
+    for wp in range(wp_num):
+        wp_offset = 2 + wp * 21
+        for i in range(params.JOINTS_MAX):
+            offset = modbus_server.MB_START_PATH_REG + 1 + i * 2 + wp_offset
+            goal_config.append(convert_to_float(mb_server.data_store[offset], mb_server.data_store[offset + 1]))
+        print('Goal config:', goal_config)
+        max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 13 + wp_offset],
+                                     mb_server.data_store[modbus_server.MB_START_PATH_REG + 13 + wp_offset + 1])
+        print('Max speed:', max_speed, 'rad/s')
 
-    s0 = time.time()
-    fut = executor.submit(calculate_trajectory, np.array(rs_com.current_config), np.array(goal_config), max_speed)
-    while fut.running():
-        await asyncio.sleep(0.05)
-    traj.value = fut.result()
-    print('calculate_trajectory:', time.time() - s0, 's')
+        s0 = time.time()
+        fut = executor.submit(calculate_trajectory, start_config, np.array(goal_config), max_speed)
+        start_config = np.array(goal_config)
+        while fut.running():
+            await asyncio.sleep(0.05)
+        if type(traj.value) is np.ndarray:
+            traj.value = np.append(traj.value, fut.result(),1)
+        else:
+            traj.value = fut.result()
+        print('calculate_trajectory:', time.time() - s0, 's')
 
-    await asyncio.sleep(0.02)
+        await asyncio.sleep(0.02)
+
+
+    if np.size(traj.value,1) > 12000:
+        print('Trajectory is too long.')
+        return 'dupa'
 
     s0 = time.time()
     fut2 = executor.submit(traj.prepare_trajectory_to_send)
@@ -72,7 +87,6 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
         await asyncio.sleep(0.05)
     fut2.result()
     print('prepare_trajectory_to_send:', time.time() - s0, 's')
-
     await asyncio.sleep(0.02)
 
     print('Sending trajectory to JTC')
