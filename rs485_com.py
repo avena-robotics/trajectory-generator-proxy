@@ -295,8 +295,8 @@ class RSComm:
             with self.read_bytes_buffer_mtx:
                 ret = self.read_st_frame()
             if ret is not None:
-                # with mb_server.jtc_status_mtx:
-                mb_server.jtc_status[0] = ret
+                with mb_server.tele_mtx:
+                    mb_server.jtc_status[0] = ret
             await asyncio.sleep(0.005)
 
     async def msg_dispatch(self, q):

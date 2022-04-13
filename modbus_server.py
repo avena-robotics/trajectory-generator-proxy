@@ -1,5 +1,5 @@
 import os
-import asyncio
+import asyncio, threading
 import struct
 import time
 from collections import defaultdict
@@ -51,9 +51,19 @@ class ModbusServer:
         self.jtc_status=[0]
         self.app = get_server(RTUServer, self.s)
         self.flags = Flags()
+
+        self.path_mtx = threading.Lock()
+        self.ctrl_mtx = threading.Lock()
+        self.tele_mtx = threading.Lock()
+
+        self.handle_modbus_thread = threading.Thread(target=self.handle_request_threaded, daemon=True).start()
         
         @self.app.route(slave_ids=[1], function_codes=[3], addresses=list(range(MB_START_TELEMETRY_REG, MB_END_TELEMETRY_REG + 1)))
         def read_data_store(slave_id, function_code, address):
+            if address == MB_START_TELEMETRY_REG:
+                self.tele_mtx.acquire()
+            elif address == MB_END_TELEMETRY_REG:
+                self.tele_mtx.release()
             # """" Return value of address. """
             # print(f'Telemetry. Address: {address}')
             # if address == MB_END_TELEMETRY_REG:
@@ -64,21 +74,41 @@ class ModbusServer:
         def write_waypoints(slave_id, function_code, address, value):
             """" Set value for address. """
             # print(f'{__name__}. Address: {address}, value: {value}')
-            self.data_store[address] = value
-            if address == MB_END_PATH_REG: # Point 0 received
+            if address == MB_START_PATH_REG:
+                self.path_mtx.acquire()
+                self.data_store[address] = value
+            elif address == MB_END_PATH_REG: # Point 0 received
+                self.path_mtx.release()
                 self.flags.send_waypoints = True
+
 
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_CONTROL_REG, MB_END_CONTROL_REG + 1)))
         def write_control_words(slave_id, function_code, address, value):
             """" Set control words. """
             # print(f'{__name__}. Address: {address}, value: {value}')
-            self.control_words[address] = value
+            if address == MB_START_CONTROL_REG:
+                self.ctrl_mtx.acquire()
+                self.control_words[address] = value
             if address == MB_END_CONTROL_REG:
+                self.ctrl_mtx.release()
                 self.flags.send_control_word = True
 
     async def handle_request(self):
         while True:
             await asyncio.sleep(0.05)
+            try:
+                self.app.serve_once()
+            except (CRCError, struct.error) as e:
+                print('Can\'t handle request: {0}'.format(e))
+            except SerialTimeoutException as e:
+                print('[ERROR]: SerialTimeoutException', e)
+            except ValueError as e:
+                # print('[ERROR]: ValueError', e)
+                pass
+
+    def handle_request_threaded(self):
+        while True:
+            time.sleep(0.05)
             try:
                 self.app.serve_once()
             except (CRCError, struct.error) as e:

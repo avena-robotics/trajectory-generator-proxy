@@ -47,7 +47,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
                                   executor: ThreadPoolExecutor):
     print('Calculate and send trajectory...')
     # Deserialize data receive from Modbus to get goal config
-    goal_config = []
+    mb_server.path_mtx.acquire()
     wp_num = mb_server.data_store[modbus_server.MB_START_PATH_REG + 1]
     print('Received', wp_num, 'waypoints')
     traj = trajectory.Trajectory()
@@ -62,6 +62,8 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
         max_speed = convert_to_float(mb_server.data_store[modbus_server.MB_START_PATH_REG + 13 + wp_offset],
                                      mb_server.data_store[modbus_server.MB_START_PATH_REG + 13 + wp_offset + 1])
         print('Max speed:', max_speed, 'rad/s')
+
+        mb_server.path_mtx.release()
 
         s0 = time.time()
         fut = executor.submit(calculate_trajectory, start_config, np.array(goal_config), max_speed)
@@ -97,6 +99,7 @@ async def calculate_and_send_traj(mb_server: modbus_server.ModbusServer, rs_com:
 async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485_com.RSComm):
     command = params.Host_FT(0)
     param_list = []
+    mb_server.ctrl_mtx.acquire()
     for i in range(modbus_server.MB_START_CONTROL_REG, modbus_server.MB_END_CONTROL_REG + 1):
         if mb_server.control_words[i]:
             if i == modbus_server.MB_START_CONTROL_REG:
@@ -121,6 +124,7 @@ async def send_control_word(mb_server: modbus_server.ModbusServer, rs_com: rs485
                 print('TES changes to:', params.TES(mb_server.control_words[i]))
                 command = params.Host_FT.TrajSetExecStatus
                 param_list.append(params.TES(mb_server.control_words[i]).value)
+    mb_server.ctrl_mtx.release()
     rs_com.send_command(command, param_list)
 
 
@@ -133,7 +137,7 @@ async def main():
     print('Adding tasks')
     tasks = []
     tasks.append(asyncio.create_task(rs_com.update_stm_status(mb_serv)))
-    tasks.append(asyncio.create_task(mb_serv.handle_request()))
+    # tasks.append(asyncio.create_task(mb_serv.handle_request()))
     tasks.append(asyncio.create_task(handle_flags(mb_serv, rs_com, traj_calc_exec)))
 
     print('Running...')
