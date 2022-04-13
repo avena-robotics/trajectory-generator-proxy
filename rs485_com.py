@@ -279,17 +279,6 @@ class RSComm:
                 break
             await asyncio.sleep(0.015)
 
-    def execute_trajectory(self):
-        # FIXME: Do it better, more generic, use send_command method
-        msg = struct.pack('>BB', params.Host_FT.Header.value, params.Host_FT.TrajSetExecStatus.value)
-        msg += struct.pack('>H', 0)  # placeholder for nd
-        msg += struct.pack('>B', params.TES.Execute.value)
-        nd = len(msg) + 2
-        msg = msg.replace(msg[2:4], struct.pack('>H', nd), 1)
-        crc = get_crc(msg)
-        msg += struct.pack('>H', crc)
-        self.port.write(msg)
-
     async def update_stm_status(self, mb_server):
         while True:
             with self.read_bytes_buffer_mtx:

@@ -1,5 +1,5 @@
 import os
-import asyncio, threading
+import threading
 import struct
 import time
 from collections import defaultdict
@@ -60,14 +60,12 @@ class ModbusServer:
         
         @self.app.route(slave_ids=[1], function_codes=[3], addresses=list(range(MB_START_TELEMETRY_REG, MB_END_TELEMETRY_REG + 1)))
         def read_data_store(slave_id, function_code, address):
+            """" Return value of address. """
+            # print(f'[read_data_store]: Telemetry. Address: {address}')
             if address == MB_START_TELEMETRY_REG:
                 self.tele_mtx.acquire()
             elif address == MB_END_TELEMETRY_REG:
                 self.tele_mtx.release()
-            # """" Return value of address. """
-            # print(f'[read_data_store]: Telemetry. Address: {address}')
-            # if address == MB_END_TELEMETRY_REG:
-            #     print(time.time_ns())
             return self.jtc_status[0][address]
 
         @self.app.route(slave_ids=[1], function_codes=[16], addresses=list(range(MB_START_PATH_REG, MB_END_PATH_REG + 1)))
@@ -76,8 +74,8 @@ class ModbusServer:
             # print(f'[write_waypoints]: Address: {address}, value: {value}')
             if address == MB_START_PATH_REG:
                 self.path_mtx.acquire()
-                self.data_store[address] = value
-            elif address == MB_END_PATH_REG: # All points received
+            self.data_store[address] = value
+            if address == MB_END_PATH_REG: # All points received
                 self.path_mtx.release()
                 self.flags.send_waypoints = True
 
@@ -88,23 +86,10 @@ class ModbusServer:
             # print(f'[write_control_words]: Address: {address}, value: {value}')
             if address == MB_START_CONTROL_REG:
                 self.ctrl_mtx.acquire()
-                self.control_words[address] = value
+            self.control_words[address] = value
             if address == MB_END_CONTROL_REG:
                 self.ctrl_mtx.release()
                 self.flags.send_control_word = True
-
-    async def handle_request(self):
-        while True:
-            await asyncio.sleep(0.05)
-            try:
-                self.app.serve_once()
-            except (CRCError, struct.error) as e:
-                print('Can\'t handle request: {0}'.format(e))
-            except SerialTimeoutException as e:
-                print('[ERROR]: SerialTimeoutException', e)
-            except ValueError as e:
-                # print('[ERROR]: ValueError', e)
-                pass
 
     def handle_request_threaded(self):
         while True:
@@ -121,4 +106,3 @@ class ModbusServer:
 
 if __name__ == '__main__':
     ms=ModbusServer()
-    asyncio.run(ms.handle_request())
