@@ -60,11 +60,16 @@ class RSComm:
             return
         if nd > params.COMBUFREADMAX:
             self.read_bytes_buffer = b''
-            # print('nd > params.COMBUFREADMAX')
             return
 
         # Save valid buffer
         read_buffer = self.read_bytes_buffer[header_idx:header_idx + nd]
+        
+        # Validate CRC
+        if (calc_crc := get_crc(read_buffer[:-2])) != struct.unpack('>H', read_buffer[-2:])[0]:
+            print(f"Invalid CRC. Received: {struct.unpack('>H', read_buffer[-2:])[0]}, expected: {calc_crc}")
+            self.read_bytes_buffer = b''
+            return
 
         ##################################################
         # DEBUG
