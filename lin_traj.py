@@ -1,4 +1,5 @@
 import numpy as np
+import roboticstoolbox as rtb
 from roboticstoolbox.robot.ERobot import ERobot
 from math import pi
 import os
@@ -10,7 +11,7 @@ class AvenaRobot(ERobot):
     """
 
     def __init__(self):
-        args = super().URDF_read("avena_description/robots/avena_arm.urdf.xacro")
+        args = super().URDF_read(os.getcwd()+"/xacro/avena_description/robots/avena_arm.urdf.xacro")
 
         super().__init__(
             args[0],
