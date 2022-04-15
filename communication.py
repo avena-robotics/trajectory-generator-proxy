@@ -24,9 +24,14 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array, max_spee
     moves the fastest and it determines full time of 
     '''
     max_diff = np.max(np.abs(goal_config - start_config))
+    print(f'Max diff in configuration: {max_diff} rad')
     max_speed = min(max_speed, params.MAX_VEL)
-    time = max_diff / max_speed
+    # FIXME: It's a hack to multiply time by 2.0 because we don't have idea how to determine
+    # time of trajectory to fulfil constraints for joints
+    time = 2.0 * max_diff / max_speed
+    print(f'Time of trajectory: {time} s')
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
+    print(f'Number of trajectory points: {time_vec.size}')
     rtb_traj = jtraj(start_config, goal_config, time_vec)
     print(f'Calculated trajectory max speed: {max(rtb_traj.qd.max(), abs(rtb_traj.qd.min()))} rad/s')
     print(f'Calculated trajectory max acc: {max(rtb_traj.qdd.max(), abs(rtb_traj.qdd.min()))} rad/s^2')
