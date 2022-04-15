@@ -28,8 +28,8 @@ def calculate_trajectory(start_config: np.array, goal_config: np.array, max_spee
     time = max_diff / max_speed
     time_vec = np.linspace(0, time, int(time / params.TIME_STEP))
     rtb_traj = jtraj(start_config, goal_config, time_vec)
-    print(f'Trajectory max speed: {max(rtb_traj.qd.max(), abs(rtb_traj.qd.min()))} rad/s')
-    print(f'Trajectory max acc: {max(rtb_traj.qdd.max(), abs(rtb_traj.qdd.min()))} rad/s^2')
+    print(f'Calculated trajectory max speed: {max(rtb_traj.qd.max(), abs(rtb_traj.qd.min()))} rad/s')
+    print(f'Calculated trajectory max acc: {max(rtb_traj.qdd.max(), abs(rtb_traj.qdd.min()))} rad/s^2')
     traj = np.array([rtb_traj.q, rtb_traj.qd, rtb_traj.qdd])
     return traj
 
